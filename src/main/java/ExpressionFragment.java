@@ -244,9 +244,9 @@ public class ExpressionFragment implements CompoundExpression {
 
     private void setupNode(ObservableList<Node> hboxChildren, String operator) {
         hboxChildren.add(subExpressions.get(0).getNode());
-        for (ExpressionFragment subExpression : subExpressions) {
+        for (int i = 1; i < subExpressions.size(); i++) {
             hboxChildren.add(Util.createLabel(operator));
-            hboxChildren.add(subExpression.getNode());
+            hboxChildren.add(subExpressions.get(i).getNode());
         }
     }
 
