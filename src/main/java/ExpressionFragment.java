@@ -18,23 +18,36 @@ public class ExpressionFragment implements CompoundExpression {
         LITERAL
     }
 
-    /** Type of this compound expression */
+    /**
+     * Type of this compound expression
+     */
     private final CompoundType compoundType;
-    /** The literal expression contained by this fragment, if applicable */
+    /**
+     * The literal expression contained by this fragment, if applicable
+     */
     private String literal;
 
-    /** Parent of this fragment */
+    /**
+     * Parent of this fragment
+     */
     private ExpressionFragment parent;
-    /** Children of this fragment, if applicable */
+    /**
+     * Children of this fragment, if applicable
+     */
     private ArrayList<ExpressionFragment> subExpressions = new ArrayList<>();
 
-    /** JavaFX Node acting as the graphical representation of this expression */
+    /**
+     * JavaFX Node acting as the graphical representation of this expression
+     */
     private Node node;
-    /** Whether the current node is focused in the expression editor */
+    /**
+     * Whether the current node is focused in the expression editor
+     */
     private boolean focused;
 
     /**
      * Create a new compound expression fragment with a given type and no parent or children.
+     *
      * @param type Type of this compound expression fragment
      */
     public ExpressionFragment(CompoundType type) {
@@ -43,6 +56,7 @@ public class ExpressionFragment implements CompoundExpression {
 
     /**
      * Construct a literal expression fragment. Literals cannot have children.
+     *
      * @param literal Literal value (number or single-letter variable)
      */
     public ExpressionFragment(String literal) {
@@ -52,6 +66,7 @@ public class ExpressionFragment implements CompoundExpression {
 
     /**
      * Check if the current statement is a parenthetical with no children.
+     *
      * @return If the fragment is empty
      */
     public boolean isEmpty() {
@@ -60,6 +75,7 @@ public class ExpressionFragment implements CompoundExpression {
 
     /**
      * Get all subexpressions of this compound ExpressionFragment, or an empty list if the fragment is a literal.
+     *
      * @return All subexpressions, if applicable
      */
     private List<ExpressionFragment> getSubExpressions() {
@@ -68,17 +84,18 @@ public class ExpressionFragment implements CompoundExpression {
 
     /**
      * Adds the specified expression as a child.
+     *
      * @param subexpression the child expression to add
      */
     @Override
     public void addSubexpression(Expression subexpression) {
-        if(compoundType == CompoundType.LITERAL)
+        if (compoundType == CompoundType.LITERAL)
             throw new UnsupportedOperationException("Literal expression fragments cannot have subexpressions");
 
         try {
             subexpression.setParent(this);
             subExpressions.add((ExpressionFragment) subexpression);
-        } catch (ClassCastException e){
+        } catch (ClassCastException e) {
             System.out.println("Could not add subexpression: " + subexpression.convertToString(0));
             e.printStackTrace();
         }
@@ -86,6 +103,7 @@ public class ExpressionFragment implements CompoundExpression {
 
     /**
      * Returns the expression's parent.
+     *
      * @return the expression's parent
      */
     @Override
@@ -95,6 +113,7 @@ public class ExpressionFragment implements CompoundExpression {
 
     /**
      * Sets the parent be the specified expression.
+     *
      * @param parent the CompoundExpression that should be the parent of the target object
      */
     @Override
@@ -106,16 +125,17 @@ public class ExpressionFragment implements CompoundExpression {
      * Creates and returns a deep copy of the expression.
      * The entire tree rooted at the target node is copied, i.e.,
      * the copied Expression is as deep as possible.
+     *
      * @return the deep copy
      */
     @Override
     public Expression deepCopy() {
-        if(this.compoundType == CompoundType.LITERAL)
+        if (this.compoundType == CompoundType.LITERAL)
             return new ExpressionFragment(this.literal);
 
         ExpressionFragment copy = new ExpressionFragment(this.compoundType);
 
-        for(ExpressionFragment fragment : subExpressions) {
+        for (ExpressionFragment fragment : subExpressions) {
             copy.addSubexpression(fragment.deepCopy());
         }
 
@@ -131,17 +151,15 @@ public class ExpressionFragment implements CompoundExpression {
      */
     @Override
     public void flatten() {
-        for(ExpressionFragment fragment : subExpressions) {
+        for (ExpressionFragment fragment : subExpressions) {
             fragment.flatten();
         }
 
         ArrayList<ExpressionFragment> condensedSubExpressions = new ArrayList<>();
-        for(ExpressionFragment fragment : subExpressions) {
-            if(fragment.compoundType == this.compoundType)
-            {
+        for (ExpressionFragment fragment : subExpressions) {
+            if (fragment.compoundType == this.compoundType) {
                 condensedSubExpressions.addAll(fragment.getSubExpressions());
-            }
-            else {
+            } else {
                 condensedSubExpressions.add(fragment);
             }
         }
@@ -155,15 +173,23 @@ public class ExpressionFragment implements CompoundExpression {
     @Override
     public void convertToString(StringBuilder stringBuilder, int indentLevel) {
         stringBuilder.append(Util.repeat(indentLevel, "\t"));
-        switch(compoundType) {
-            case ADDITIVE: stringBuilder.append("+"); break;
-            case MULTIPLICATIVE: stringBuilder.append("*"); break;
-            case PARENTHETICAL: stringBuilder.append("()"); break;
-            case LITERAL: stringBuilder.append(literal); break;
+        switch (compoundType) {
+            case ADDITIVE:
+                stringBuilder.append("+");
+                break;
+            case MULTIPLICATIVE:
+                stringBuilder.append("*");
+                break;
+            case PARENTHETICAL:
+                stringBuilder.append("()");
+                break;
+            case LITERAL:
+                stringBuilder.append(literal);
+                break;
         }
         stringBuilder.append("\n");
 
-        for(ExpressionFragment fragment : subExpressions) {
+        for (ExpressionFragment fragment : subExpressions) {
             fragment.convertToString(stringBuilder, indentLevel + 1);
         }
     }
@@ -171,6 +197,7 @@ public class ExpressionFragment implements CompoundExpression {
     /**
      * Creates a String representation by recursively printing out (using indentation) the
      * tree represented by this expression, starting at the specified indentation level.
+     *
      * @param indentLevel the indentation level (number of tabs from the left margin) at which to start
      * @return The string conversion of this expression
      */
@@ -183,41 +210,51 @@ public class ExpressionFragment implements CompoundExpression {
 
     @Override
     public Node getNode() {
-        switch (compoundType) {
-
-            case ADDITIVE:
-                return getNode("+");
-            case MULTIPLICATIVE:
-                return getNode("*");
-            case PARENTHETICAL:
-                break;
-            case LITERAL:
-                break;
-        }
-        return null;
-    }
-
-    private Node getNode(String operator) {
-        if(node == null) {
+        if (node == null) {
             final HBox hbox = new HBox();
             ObservableList<Node> hboxChildren = hbox.getChildren();
 
-            hboxChildren.add(subExpressions.get(0).getNode());
-            for (ExpressionFragment subExpression : subExpressions) {
-                hboxChildren.add(Util.createLabel(operator));
-                hboxChildren.add(subExpression.getNode());
+            switch (compoundType) {
+                case ADDITIVE:
+                    setupNode(hboxChildren, "+");
+                     break;
+                case MULTIPLICATIVE:
+                    setupNode(hboxChildren, "*");
+                    break;
+                case PARENTHETICAL:
+                    hboxChildren.add(Util.createLabel("("));
+                    hboxChildren.add(subExpressions.get(0).getNode());
+                    hboxChildren.add(Util.createLabel(")"));
+                    break;
+                case LITERAL:
+                    hbox.getChildren().add(Util.createLabel(this.literal));
+                    break;
             }
 
-            if(focused) {
+            if (focused) {
                 hbox.setBorder(Expression.RED_BORDER);
             }
 
             node = hbox;
         }
 
+
         return node;
     }
 
-    public boolean getFocused() { return focused; }
-    public void setFocused(boolean focus) { focused = focus; }
+    private void setupNode(ObservableList<Node> hboxChildren, String operator) {
+        hboxChildren.add(subExpressions.get(0).getNode());
+        for (ExpressionFragment subExpression : subExpressions) {
+            hboxChildren.add(Util.createLabel(operator));
+            hboxChildren.add(subExpression.getNode());
+        }
+    }
+
+    public boolean getFocused() {
+        return focused;
+    }
+
+    public void setFocused(boolean focus) {
+        focused = focus;
+    }
 }
