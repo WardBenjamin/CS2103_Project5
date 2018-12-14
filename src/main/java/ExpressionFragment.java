@@ -242,6 +242,10 @@ public class ExpressionFragment implements CompoundExpression {
         return builder.toString();
     }
 
+    /**
+     * Returns the JavaFX node associated with this expression.
+     * @return the JavaFX node associated with this expression.
+     */
     @Override
     public Node getNode() {
         if (node == null)
@@ -249,12 +253,20 @@ public class ExpressionFragment implements CompoundExpression {
         return node;
     }
 
+    /**
+     * Copy the JavaFX node associated with this expression
+     * @return Copy of the JavaFX node associated with this expression
+     */
     public Node getNodeCopy() {
         Node copy = getNewNode();
 //        Util.recolor(copy, Util.getColor(getNewNode()));
         return copy;
     }
 
+    /**
+     * Helper function to create a new node if required (aka the expression does not yet have a node) or to copy the current node
+     * @return New node representing this function
+     */
     private Node getNewNode() {
         final HBox hbox = new HBox();
         ObservableList<Node> hboxChildren = hbox.getChildren();
@@ -283,6 +295,11 @@ public class ExpressionFragment implements CompoundExpression {
         return hbox;
     }
 
+    /**
+     * Set up an (additive or multiplicative) expression in order, using the specified operator
+     * @param hboxChildren List of children to add new labels to
+     * @param operator + or *
+     */
     private void setupNode(ObservableList<Node> hboxChildren, String operator) {
         hboxChildren.add(subExpressions.get(0).getNode());
         for (int i = 1; i < subExpressions.size(); i++) {
@@ -291,14 +308,26 @@ public class ExpressionFragment implements CompoundExpression {
         }
     }
 
+    /**
+     * Return whether or not this node is the one currently focused
+     * @return
+     */
     public boolean getFocused() {
         return focused;
     }
 
+    /**
+     * Set the focus state of this node
+     * @param focus
+     */
     public void setFocused(boolean focus) {
         focused = focus;
     }
 
+    /**
+     * Convert this expression fragment to a flat string for easier display
+     * @return Flat representation of the current expression
+     */
     public String convertToFlatString() {
 
         switch (compoundType) {
@@ -316,6 +345,11 @@ public class ExpressionFragment implements CompoundExpression {
         }
     }
 
+    /**
+     * Helper function to generate a flat string representation of an (additive or multiplicative) expression
+     * @param operator + or *
+     * @return Flat string representation
+     */
     private String convertToFlatString(String operator) {
 
         StringBuilder outputStringBuilder = new StringBuilder();
@@ -329,10 +363,21 @@ public class ExpressionFragment implements CompoundExpression {
         return outputStringBuilder.toString();
     }
 
+    /**
+     * Get the compound type of this expression fragment
+     * @return Compound type of this fragment
+     */
     public CompoundType getCompoundType() {
         return compoundType;
     }
 
+    /**
+     * Generate all possible candidate trees from a parent expression fragment, given a string representation
+     * of the selected node
+     * @param parent Parent expression fragment used as the tree root
+     * @param selected Selected node
+     * @return List of candidate expression trees
+     */
     public static ArrayList<ExpressionFragment> generateCandidateTrees(ExpressionFragment parent, String selected) {
 //        System.out.println("Generating candidate trees");
 //        System.out.println("Searching for:\n" + selected);
@@ -395,6 +440,11 @@ public class ExpressionFragment implements CompoundExpression {
         return possibleTrees;
     }
 
+    /**
+     * Check if the specified object is equal to this expression fragment
+     * @param o Object to check for equality
+     * @return Whether the specific object is equal to the current expression
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

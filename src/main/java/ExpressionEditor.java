@@ -72,20 +72,30 @@ public class ExpressionEditor extends Application {
             lastSceneX = sceneX;
             lastSceneY = sceneY;
         }
-        
+
+        /**
+         * Handle the mouse release event
+         * @param event Mouse event
+         * @param sceneX X-axis cursor position in the scene
+         * @param sceneY Y-axis cursor position in the scene
+         */
         private void handleClick(MouseEvent event, final double sceneX, final double sceneY) {
             ObservableList<Node> hboxChildren = currentFocus.getChildren();
 
-            //If the focus is a single variable then don't bother checking
-//            if(hboxChildren.size() == 1 && event.isDragDetect()){
-//                return;
-//            }
+            // TODO: Is the single-node case special? Apparently.
+            if(hboxChildren.size() == 1 && event.isDragDetect()){
+                return;
+            }
 
             boolean foundFocusTarget = false;
 
+            // Loop through all current sub-nodes in the focused node and check if the click is meant to select one
             for (Node currentNode : hboxChildren) {
+                // Ignore labels
                 if (currentNode instanceof HBox) {
+                    // If we find a sub-node that contains the mouse position, we've found the focus target
                     if (currentNode.contains(currentNode.sceneToLocal(sceneX, sceneY))) {
+                        // Only actually change focus every other click, to allow for a second click before drag events
                         if (oddClick()) {
                             // Change focus
                             HBox previousFocus = currentFocus;
@@ -97,13 +107,14 @@ public class ExpressionEditor extends Application {
                             currentFocusCopy.setLayoutX(currentLocation.getX() - currentFocus.getLayoutX());
                             currentFocusCopy.setLayoutY(currentLocation.getY() - currentFocus.getHeight() / 2);
 
-//                            pane.getChildren().add(currentFocusCopy);
-
+                            // Set a red border around the currently focused node
                             previousFocus.setBorder(Expression.NO_BORDER);
                             currentFocus.setBorder(Expression.RED_BORDER);
+                            Util.recolor(currentFocus, Expression.GHOST_COLOR);
                         }
                         foundFocusTarget = true;
                     }
+                    // In this case, we still found the focus target but we can't actually focus the operator labels
                 } else if (currentNode instanceof Label && evenClick()) {
                     if (currentNode.contains(currentNode.sceneToLocal(sceneX, sceneY))) {
                         foundFocusTarget = true;
@@ -111,6 +122,7 @@ public class ExpressionEditor extends Application {
                 }
             }
 
+            // If there's no target, reset
             if (!foundFocusTarget) {
                 clickCounter = 0;
                 currentFocus.setBorder(Expression.NO_BORDER);
@@ -140,12 +152,16 @@ public class ExpressionEditor extends Application {
             }
         }
 
+        /**
+         * Handle the mouse drag event
+         * @param event Mouse event
+         * @param sceneX X-axis cursor position in the scene
+         * @param sceneY Y-axis cursor position in the scene
+         */
         private void handleDrag(MouseEvent event, final double sceneX, final double sceneY) {
 
             if(currentFocus.equals(rootExpression.getNode()))
                 return;
-
-            Util.recolor(currentFocus, Expression.GHOST_COLOR);
 
             // Find the closest breakpoint position to figure out the closest candidate tree
             findClosestPosition(sceneX, sceneY);
@@ -154,17 +170,17 @@ public class ExpressionEditor extends Application {
             addToRoot(expressions.get(closestExpressionIndex), expressions.get(closestExpressionIndex).getSubExpressions().get(0));
 
             // Generate the next tree
-            HBox hb = generateHBox();
+            HBox hbox = generateHBox();
 
             // Display the new tree
             ObservableList<Node> paneChildren = pane.getChildren();
             paneChildren.clear();
-            paneChildren.add(hb);
+            paneChildren.add(hbox);
             paneChildren.add(currentFocusCopy);
 
-
-            hb.setLayoutX(WINDOW_WIDTH / 4);
-            hb.setLayoutY(WINDOW_HEIGHT / 2);
+            // Re"center" the hbox
+            hbox.setLayoutX(WINDOW_WIDTH / 4);
+            hbox.setLayoutY(WINDOW_HEIGHT / 2);
 
             // Move the current focus in the direction of the mouse, if the root is not the current focus
             if(currentFocusCopy != rootExpression.getNode()) {
@@ -173,6 +189,12 @@ public class ExpressionEditor extends Application {
             }
         }
 
+        /**
+         * Handle the mouse release event
+         * @param event Mouse event
+         * @param sceneX X-axis cursor position in the scene
+         * @param sceneY Y-axis cursor position in the scene
+         */
         private void handleRelease(MouseEvent event, final double sceneX, final double sceneY) {
 
             if(Math.abs(lastClickX - sceneX) < 1 && Math.abs(lastClickY - sceneY) < 1)
@@ -199,6 +221,7 @@ public class ExpressionEditor extends Application {
             if (shouldReset) {
                 shouldReset = false;
 
+                // Rebuild the root expression from the currently shown expression
                 final ExpressionFragment newExpression;
                 try {
                     newExpression = (ExpressionFragment) expressionParser.parse(hboxToString(hb), true);
@@ -208,6 +231,7 @@ public class ExpressionEditor extends Application {
                     return;
                 }
 
+                // Add the new expression to the scene
                 final HBox newExpressionNode = (HBox) newExpression.getNode();
 
                 paneChildren.clear();
@@ -229,30 +253,61 @@ public class ExpressionEditor extends Application {
                 hb.setLayoutY(WINDOW_HEIGHT / 2);
             }
 
-            closestExpressionIndex = 0; // Reset the closest expression index
+            // Reset the closest expression index
+            closestExpressionIndex = 0;
+
+            // Print the new expression to console
             System.out.println(rootExpression.convertToString(0));
         }
 
+        /**
+         * Check if the current click count is odd (i.e. not divisible by two)
+         * @return Whether the current click count is odd
+         */
         private boolean oddClick() {
             return clickCounter % 2 != 0;
         }
 
+        /**
+         * Check if the current click count is even (i.e. divisible by two)
+         * @return Whether the current click count is even
+         */
         private boolean evenClick() {
             return !oddClick();
         }
 
+        /**
+         * Calculate the delta between the current scene X and the X from last event
+         * @param sceneX Current cursor position in scene
+         * @return Change in cursor position
+         */
         private double deltaX(double sceneX) {
             return sceneX - lastSceneX;
         }
 
+        /**
+         * Calculate the delta between the current scene Y and the Y from last event
+         * @param sceneY Current cursor position in scene
+         * @return Change in cursor position
+         */
         private double deltaY(double sceneY) {
             return sceneY - lastSceneY;
         }
 
+        /**
+         * Recursively add the expression to the node root
+         * @param parentExpression Parent expression
+         * @param subExpression Subexpression
+         */
         private void addToRoot(ExpressionFragment parentExpression, ExpressionFragment subExpression) {
             addToRoot(parentExpression, subExpression, rootExpression, rootExpression.getSubExpressions());
         }
 
+        /**
+         * Recursively add the expression to the node root
+         * @param parentExpression Parent expression
+         * @param subExpression Subexpression
+         */
         private void addToRoot(ExpressionFragment parentExpression, ExpressionFragment childExpression, ExpressionFragment root, ArrayList<ExpressionFragment> subExpressions) {
             for (ExpressionFragment subExpression : subExpressions) {
                 if (subExpression.equals(childExpression)) {
@@ -283,13 +338,23 @@ public class ExpressionEditor extends Application {
             }
         }
 
+        /**
+         * Gets the width of each element in the tree and creates breakpoint distances based on half of that width
+         * @param fragment Tree candidate
+         * @param node Variable node
+         */
         private void generateNodePositions(ExpressionFragment fragment, Node node) {
             generateNodePositions(fragment, node, fragment.getSubExpressions());
         }
 
+        /**
+         * Gets the width of each element in the tree and creates breakpoint distances based on half of that width
+         * @param fragment Tree candidate
+         * @param node Variable node
+         * @param subExpressions  List of subexpressions
+         */
         private void generateNodePositions(ExpressionFragment fragment, Node node, ArrayList<ExpressionFragment> subExpressions) {
             for (int i = 0; i < subExpressions.size(); i++) {
-//                System.out.println("Node: " + node + ", current: " + subExpressions.get(i).getNode());
                 if (subExpressions.get(i).getNode().equals(node)) {
                     generateNodeTreePositions(fragment, subExpressions);
                     return;
@@ -304,6 +369,8 @@ public class ExpressionEditor extends Application {
 
         /**
          * Gets the width of each element in the tree and creates breakpoint distances based on half of that width
+         * @param fragment Tree candidate
+         * @param subExpressions  List of subexpressions
          */
         private void generateNodeTreePositions(ExpressionFragment fragment, ArrayList<ExpressionFragment> subExpressions) {
             int widthTotal = 0;
@@ -323,6 +390,11 @@ public class ExpressionEditor extends Application {
             expressions.add(fragment);
         }
 
+        /**
+         * Generate a map of each fragment in the tree to the corresponding node
+         * @param fragment Root fragment
+         * @return Map containing fragments mapped to their nodes
+         */
         private HashMap<HBox, ExpressionFragment> generateFragmentMap(ExpressionFragment fragment) {
             HashMap<HBox, ExpressionFragment> map = new HashMap<>();
             map.put((HBox) fragment.getNode(), fragment);
@@ -336,8 +408,7 @@ public class ExpressionEditor extends Application {
 
         /**
          * Recursively check if the node or its sub-tree contains the currently focused node
-         *
-         * @param node
+         * @param node Node to check for focus
          * @return Whether the node tree contains the currently focused node
          */
         private boolean containsFocus(ExpressionFragment node) {
@@ -356,8 +427,7 @@ public class ExpressionEditor extends Application {
         }
 
         /**
-         * Creates a new HBox in the direction of the focus
-         *
+         * Creates a new HBox and fixes the focus
          * @param fragment Expression that contains a focus
          * @return HBox to be put on pane
          */
@@ -405,6 +475,10 @@ public class ExpressionEditor extends Application {
             return hb;
         }
 
+        /**
+         * Generate an HBox representation of
+         * @return
+         */
         private HBox generateHBox() {
             HBox hb = new HBox();
 
@@ -414,7 +488,7 @@ public class ExpressionEditor extends Application {
             if (rootType == ExpressionFragment.CompoundType.LITERAL) {
                 hb.getChildren().add(rootExpression.getNodeCopy());
             } else {
-                for (int i = 0; i < subExpressions.size(); i++) {
+                for (ExpressionFragment subExpression : subExpressions) {
                     ObservableList<Node> hbChildren = hb.getChildren();
                     switch (rootType) {
                         case ADDITIVE:
@@ -430,7 +504,6 @@ public class ExpressionEditor extends Application {
                             break;
                     }
 
-                    ExpressionFragment subExpression = subExpressions.get(i);
                     boolean elementContainsFocus = containsFocus(subExpression);
                     // If the current child contains a focused node, unfocus the focused node
                     // and add it. Otherwise, just add it.
@@ -449,20 +522,30 @@ public class ExpressionEditor extends Application {
             return hb;
         }
 
-        private String hboxToString(HBox h) {
+        /**
+         * Convert an HBox node tree to a flat string
+         * @param hbox Node tree
+         * @return Flat string representation of the HBox node tree
+         */
+        private String hboxToString(HBox hbox) {
             StringBuilder result = new StringBuilder();
 
-            hboxToString(h, result);
+            hboxToString(hbox, result);
 
             return result.toString();
         }
 
-        private void hboxToString(HBox h, StringBuilder builder) {
-            for (Node baby : h.getChildren()) {
-                if (baby instanceof Label) {
-                    builder.append(((Label) baby).getText());
+        /**
+         * Convert an HBox node to a flat string, recursively adding to the StringBuilder
+         * @param hbox Node tree
+         * @param builder StringBuilder to append sub-trees to
+         */
+        private void hboxToString(HBox hbox, StringBuilder builder) {
+            for (Node child : hbox.getChildren()) {
+                if (child instanceof Label) {
+                    builder.append(((Label) child).getText());
                 } else {
-                    hboxToString((HBox) baby, builder);
+                    hboxToString((HBox) child, builder);
                 }
             }
         }

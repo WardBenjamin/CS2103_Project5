@@ -15,6 +15,11 @@ public class Util {
         return new String(new char[count]).replace("\0", with);
     }
 
+    /**
+     * Create a label from specified text (this inherits the global scene font)
+     * @param text Text to be shown via the label
+     * @return Label as a graphical representation of the text parameter
+     */
     public static Label createLabel(String text) {
         return new Label(text);
     }
@@ -34,6 +39,11 @@ public class Util {
         }
     }
 
+    /**
+     * Try to get the color of a node
+     * @param node Node to find color of
+     * @return Color of the node
+     */
     public static Color getColor(Node node) {
         if (node instanceof Label)
             return (Color)((Label)node).getTextFill();
