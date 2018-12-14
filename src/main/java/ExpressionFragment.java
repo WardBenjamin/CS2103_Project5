@@ -2,8 +2,10 @@ import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.layout.HBox;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
+
 
 public class ExpressionFragment implements CompoundExpression {
 
@@ -78,8 +80,12 @@ public class ExpressionFragment implements CompoundExpression {
      *
      * @return All subexpressions, if applicable
      */
-    private List<ExpressionFragment> getSubExpressions() {
+    public ArrayList<ExpressionFragment> getSubExpressions() {
         return subExpressions;
+    }
+
+    public void setSubExpressions(ArrayList<ExpressionFragment> subExpressions) {
+        this.subExpressions = subExpressions;
     }
 
     /**
@@ -118,7 +124,7 @@ public class ExpressionFragment implements CompoundExpression {
      */
     @Override
     public void setParent(CompoundExpression parent) {
-        this.parent = this;
+        this.parent = (ExpressionFragment) parent;
     }
 
     /**
@@ -143,6 +149,29 @@ public class ExpressionFragment implements CompoundExpression {
     }
 
     /**
+     * Creates and returns a deep copy of the expression.
+     * The entire tree rooted at the target node is copied, i.e.,
+     * the copied Expression is as deep as possible.
+     * This copy operation includes JavaFX Nodes
+     *
+     * @return the deep copy
+     */
+    public ExpressionFragment deepCopyWithNodes() {
+        if (this.compoundType == CompoundType.LITERAL)
+            return new ExpressionFragment(this.literal);
+
+        ExpressionFragment copy = new ExpressionFragment(this.compoundType);
+        copy.node = this.node;
+
+        for (ExpressionFragment fragment : subExpressions) {
+            copy.addSubexpression(fragment.deepCopyWithNodes());
+        }
+
+        return copy;
+    }
+
+
+    /**
      * Recursively flattens the expression as much as possible
      * throughout the entire tree. Specifically, in every multiplicative
      * or additive expression x whose first or last
@@ -163,7 +192,12 @@ public class ExpressionFragment implements CompoundExpression {
                 condensedSubExpressions.add(fragment);
             }
         }
+
         subExpressions = condensedSubExpressions;
+
+        for (ExpressionFragment fragment : subExpressions) {
+            fragment.setParent(this);
+        }
     }
 
     /**
@@ -210,36 +244,43 @@ public class ExpressionFragment implements CompoundExpression {
 
     @Override
     public Node getNode() {
-        if (node == null) {
-            final HBox hbox = new HBox();
-            ObservableList<Node> hboxChildren = hbox.getChildren();
+        if (node == null)
+            node = getNewNode();
+        return node;
+    }
 
-            switch (compoundType) {
-                case ADDITIVE:
-                    setupNode(hboxChildren, "+");
-                     break;
-                case MULTIPLICATIVE:
-                    setupNode(hboxChildren, "*");
-                    break;
-                case PARENTHETICAL:
-                    hboxChildren.add(Util.createLabel("("));
-                    hboxChildren.add(subExpressions.get(0).getNode());
-                    hboxChildren.add(Util.createLabel(")"));
-                    break;
-                case LITERAL:
-                    hbox.getChildren().add(Util.createLabel(this.literal));
-                    break;
-            }
+    public Node getNodeCopy() {
+        Node copy = getNewNode();
+//        Util.recolor(copy, Util.getColor(getNewNode()));
+        return copy;
+    }
 
-            if (focused) {
-                hbox.setBorder(Expression.RED_BORDER);
-            }
+    private Node getNewNode() {
+        final HBox hbox = new HBox();
+        ObservableList<Node> hboxChildren = hbox.getChildren();
 
-            node = hbox;
+        switch (compoundType) {
+            case ADDITIVE:
+                setupNode(hboxChildren, "+");
+                break;
+            case MULTIPLICATIVE:
+                setupNode(hboxChildren, "*");
+                break;
+            case PARENTHETICAL:
+                hboxChildren.add(Util.createLabel("("));
+                hboxChildren.add(subExpressions.get(0).getNode());
+                hboxChildren.add(Util.createLabel(")"));
+                break;
+            case LITERAL:
+                hbox.getChildren().add(Util.createLabel(this.literal));
+                break;
         }
 
+        if (focused) {
+            hbox.setBorder(Expression.RED_BORDER);
+        }
 
-        return node;
+        return hbox;
     }
 
     private void setupNode(ObservableList<Node> hboxChildren, String operator) {
@@ -256,5 +297,115 @@ public class ExpressionFragment implements CompoundExpression {
 
     public void setFocused(boolean focus) {
         focused = focus;
+    }
+
+    public String convertToFlatString() {
+
+        switch (compoundType) {
+            case ADDITIVE:
+                return convertToFlatString("+");
+            case MULTIPLICATIVE:
+                return convertToFlatString("*");
+            case PARENTHETICAL:
+                return "(" + subExpressions.get(0).convertToFlatString() + ")";
+            case LITERAL:
+                return literal;
+            default:
+                new Exception("ExpressionFragment not of valid CompoundType").printStackTrace();
+                return null;
+        }
+    }
+
+    private String convertToFlatString(String operator) {
+
+        StringBuilder outputStringBuilder = new StringBuilder();
+        for (int i = 0; i < subExpressions.size() - 1; i++) {
+            outputStringBuilder.append(subExpressions.get(i).convertToFlatString());
+            outputStringBuilder.append(operator);
+        }
+
+        outputStringBuilder.append(subExpressions.get(this.subExpressions.size() - 1).convertToFlatString());
+
+        return outputStringBuilder.toString();
+    }
+
+    public CompoundType getCompoundType() {
+        return compoundType;
+    }
+
+    public static ArrayList<ExpressionFragment> generateCandidateTrees(ExpressionFragment parent, String selected) {
+//        System.out.println("Generating candidate trees");
+//        System.out.println("Searching for:\n" + selected);
+//        System.out.println("In parent:\n" + parent.convertToString(0));
+        ExpressionFragment focused = null;
+
+        // Find the focused node by comparing the input string and stringified children
+        for (ExpressionFragment child : parent.getSubExpressions()) {
+            if (child.convertToString(0).equals(selected)) {
+                focused = child;
+                break;
+            }
+        }
+
+        final ArrayList<ExpressionFragment> fragments = parent.getSubExpressions();
+
+        int focusedFragmentIndex = -1;
+
+        // Find the index of the focused node
+        for (int i = 0; i < fragments.size(); i++) {
+            if (fragments.get(i) == focused) {
+                focusedFragmentIndex = i;
+                break;
+            }
+        }
+
+        // If we can't find the focused node, return and print an error
+        if (focusedFragmentIndex == -1) {
+            new ExpressionParseException("Found focused node but could not find index").printStackTrace();
+            return new ArrayList<>();
+        }
+
+        fragments.remove(focusedFragmentIndex);
+
+        ArrayList<ExpressionFragment> possibleTrees = new ArrayList<>();
+
+        // Loop through all expression fragments and generate potential trees by reordering the focused expression
+        for (int i = 0; i < fragments.size() + 1; i++) {
+            ExpressionFragment tempParent = parent.deepCopyWithNodes();
+            ArrayList<ExpressionFragment> orderedChildren = new ArrayList<>();
+
+            for (int j = 0; j < fragments.size(); j++) {
+                if (j == i) {
+                    orderedChildren.add(focused);
+                }
+                orderedChildren.add(fragments.get(j));
+            }
+
+            if (i == fragments.size()) {
+                orderedChildren.add(focused);
+            }
+
+            tempParent.subExpressions = orderedChildren;
+            possibleTrees.add(tempParent);
+        }
+
+//        for (ExpressionFragment tree : possibleTrees)
+//            System.out.println(tree.convertToFlatString());
+
+        return possibleTrees;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ExpressionFragment fragment = (ExpressionFragment) o;
+
+        return focused == fragment.focused &&
+                compoundType == fragment.compoundType &&
+                Objects.equals(literal, fragment.literal) &&
+                Objects.equals(parent, fragment.parent) &&
+                Objects.equals(node, fragment.node);
     }
 }
